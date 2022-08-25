@@ -15,6 +15,10 @@ use Encode;
 
 eBay 
 
+=head1 ABSTRACT
+
+Interface with the eBay API
+
 =head1 SYNOPSIS
 This package provides an interface to use the eBay Trading API.  For more information about the eBay Trading API, visit https://developer.ebay.com/devzone/xml/docs/reference/ebay/index.html
 
