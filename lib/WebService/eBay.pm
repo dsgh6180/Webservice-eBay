@@ -20,7 +20,7 @@ This package provides an interface to use the eBay Trading API.  For more inform
 
 The "hello world" equivalent in the eBay API world is to send a call asking for the current eBay time.  Here's an example of how to do that with this module:
 
- use eBay;
+ use WebService::eBay;
  
  my $response = eBay::APICall("GeteBayOfficialTime");
  print "$response->{Timestamp}\n";
