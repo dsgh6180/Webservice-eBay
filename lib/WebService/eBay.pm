@@ -1,30 +1,31 @@
 use strict;
 use warnings;
+
 package WebService::eBay;
+
+# ABSTRACT: Interface with the eBay API
 
 use LWP::UserAgent;
 use HTTP::Request;
 use HTTP::Headers;
 use XML::Simple;
-use Data::Dumper;
 use Data::UUID;
 use DateTime;
 use Encode;
 
 =head1 NAME 
 
-eBay 
-
-# ABSTRACT: Interface with the eBay API
+WebService::eBay 
 
 =head1 SYNOPSIS
+
 This package provides an interface to use the eBay Trading API.  For more information about the eBay Trading API, visit https://developer.ebay.com/devzone/xml/docs/reference/ebay/index.html
 
 The "hello world" equivalent in the eBay API world is to send a call asking for the current eBay time.  Here's an example of how to do that with this module:
 
  use WebService::eBay;
  
- my $response = eBay::APICall("GeteBayOfficialTime");
+ my $response = WebService::eBay::APICall("GeteBayOfficialTime");
  print "$response->{Timestamp}\n";
 
 But this isn't a great example for this module because the GeteBayOfficialTime call doesn't take any parameters.  A simple one that does though is the EndItem call.  Here's how you would do that in this module:
@@ -33,7 +34,7 @@ But this isn't a great example for this module because the GeteBayOfficialTime c
  my $callDetails   = "<ItemID>$listingNumber</ItemID>
  <EndingReason>OtherListingError</EndingReason>";
  
- if ( eBay::APICall( "EndItem", $callDetails ) ) {
+ if ( WebService::eBay::APICall( "EndItem", $callDetails ) ) {
  	print "\nDeleted $listingNumber from eBay\n";
  } else {
  	print("\nUnable to end listing $listingNumber\n");
@@ -41,40 +42,38 @@ But this isn't a great example for this module because the GeteBayOfficialTime c
 
 =head1 DESCRIPTION
  
-To use the eBay Trading API you need application keys and an authorization tokens.  You can obtain these through your eBay developer account.  You should create a file called "tokens" in the directory containing the program using this module.  That file should look like this for the API sandbox and testing:
+To use the eBay Trading API you need application keys and an authorization token.  You can obtain these through your eBay developer account.  You should create a file called "tokens" in the directory containing the program using this module.  That file should look like this for the API sandbox and testing:
 
- APIURL=https://api.sandbox.ebay.com/ws/api.dll
- SiteID=0
- DevName=<Your Dev Name>
- AppName=<Your App Name>
- CertName=<Your Cert Name>
- AuthToken=<Your Auth Token>
- Log=true
+ APIURL https://api.sandbox.ebay.com/ws/api.dll
+ SiteID 0
+ DevName <Your Dev Name>
+ AppName <Your App Name>
+ CertName <Your Cert Name>
+ AuthToken <Your Auth Token>
+ Log true
 
 and this for the Production keys.  
 
- APIURL=https://api.ebay.com/ws/api.dll
- SiteID=100
- DevName=<Your Dev Name>
- AppName=<Your App Name>
- CertName=<Your Cert Name>
- AuthToken=<Your Auth Token>
+ APIURL https://api.ebay.com/ws/api.dll
+ SiteID 100
+ DevName <Your Dev Name>
+ AppName <Your App Name>
+ CertName <Your Cert Name>
+ AuthToken <Your Auth Token>
  
 The last option "Log" is intended for testing and sandbox use as it logs all communication sent and received from the API, which includes your secret keys.  To not use this option, leave the "Log" line out of the tokens file or set it to something other than 'true'.
 
 
 =cut
 
-package eBay;
-
 my %config;
 my $tokens;
 my $name;
 my $value;
-open( $tokens, './tokens' ) or die "Unable to find tokens file $!";
+open( $tokens, '<', './tokens' ) or die "Unable to find tokens file $!";
 while (<$tokens>) {
 	chomp;
-	( $name, $value ) = split /=/;
+	( $name, $value ) = split / /;
 	$config{$name} = $value;
 }
 close($tokens);
@@ -105,7 +104,9 @@ The name of the API Call that you wish to make.  For a list of API calls and the
 
 =head4 RequestDetails
 
-The details of the call.  You do not need to provide the RequesterCredentials or the WarningLevel, but you do have to provide the rest of the call.  This is where that goes.  The RequesterCredentials are always the same and the WarningLevel doesn't usually need to be changed.  For information on what details your call needs, visit https://developer.ebay.com/devzone/xml/docs/reference/ebay/index.html  Some calls have no details.
+The details of the call, in XML.  You do not need to provide the RequesterCredentials or the WarningLevel, but you do have to provide the rest of the call.  This is where that goes.  The RequesterCredentials are always the same and the WarningLevel doesn't usually need to be changed.  For information on what details your call needs, visit https://developer.ebay.com/devzone/xml/docs/reference/ebay/index.html  
+
+Some calls have no details, such as GeteBayOfficialTime.
  
 =head4 Xml
 
@@ -145,8 +146,8 @@ sub APICall {
 
 	my $apiLog;
 	if ($loggingOn) {
-		open( $apiLog, ">>apiLog" ) or die $!;
-		binmode( $apiLog, ":utf8" );
+		open( $apiLog, ">>", "apiLog" ) or die $!;
+		binmode( $apiLog, ":encoding(UTF-8)" );
 		print $apiLog FormateBayDate() . "\n\n$Request\n\n";
 	}
 
@@ -163,7 +164,8 @@ sub APICall {
 	my $objRequest = HTTP::Request->new( "POST", $APIURL, $Header );
 	$objRequest->content_type("text/plain; charset='utf8'");
 	$objRequest->content( Encode::encode_utf8($Request) );
-	my $objResponse = $objUserAgent->request($objRequest) or return undef;
+	my $objResponse = $objUserAgent->request($objRequest)
+	  or die "Unable to POST API Call";
 
 	if ( $objResponse->is_error ) {
 		warn "HTTP request error: "
@@ -172,13 +174,13 @@ sub APICall {
 		sleep 2;
 		$objResponse = $objUserAgent->request($objRequest);
 		if ( $objResponse->is_error ) {
-			warn ("HTTP request error again... Trying one more time...");
+			warn("HTTP request error again... Trying one more time...");
 			sleep 2;
 			$objResponse = $objUserAgent->request($objRequest);
 			if ( $objResponse->is_error ) {
 				die
-				  "Unable to resolve the HTTP request error.  API call FAILED.";
-				return undef;
+				  "Unable to resolve the HTTP request error.  API call FAILED."
+				  ;
 			}
 		}
 	}
@@ -203,21 +205,21 @@ sub APICall {
 			my $ErrorLine = "*** API Call $CallName returned " . scalar @Errors;
 			if ( $Response->{Ack} =~ /warning/i ) {
 				$ErrorLine .= " warning(s): ";
-				foreach $Error (@Errors) {
+				foreach my $Error (@Errors) {
 					$ErrorLine .= "Warning: " . $Error->{LongMessage}->[0];
 				}
 				print($ErrorLine);
 				return $Response unless ($FailOnWarning);
 			} elsif ( $Response->{Ack} =~ /PartialFailure/i ) {
 				$ErrorLine .= " Partial Failures but did not fail.  ";
-				foreach $Error (@Errors) {
+				foreach my $Error (@Errors) {
 					$ErrorLine .= "Error: " . $Error->{LongMessage}->[0];
 				}
 				print $ErrorLine;
 				return $Response;
 			} elsif ( $Response->{Ack} =~ /failure/i ) {
 				$ErrorLine .= " error(s) and FAILED: *** ";
-				foreach $Error (@Errors) {
+				foreach my $Error (@Errors) {
 					$ErrorLine .= " || Error: " . $Error->{LongMessage}->[0];
 				}
 				print($ErrorLine);
@@ -234,7 +236,7 @@ sub APICall {
 
 	# Arrival at this line consitutes an error!
 	#    print "\n$Request\n\n$objResponse->{_content}\n\n";
-	return undef;
+	die "Unkonwn Error on API Call";
 }
 
 =head2 GeteBayTime
@@ -246,7 +248,7 @@ Returns eBay official time.  Not local time.
 =cut
 
 sub GeteBayTime {
-	my $Response = APICall("GeteBayOfficialTime") or return undef;
+	my $Response = APICall("GeteBayOfficialTime");
 
 	my $Time  = $Response->{Timestamp};
 	my $Today = substr( $Time, 0, 10 );
